@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package web_capture.v1;
+
+option go_package = "github.com/sglre6355/weather-lady/gen/proto/web_capture/v1";
+
+service WebCaptureService {
+  rpc CaptureElement(CaptureElementRequest) returns (CaptureElementResponse);
+}
+
+enum ImageFormat {
+  IMAGE_FORMAT_UNSPECIFIED = 0;
+  IMAGE_FORMAT_PNG = 1;
+  IMAGE_FORMAT_JPEG = 2;
+  IMAGE_FORMAT_WEBP = 3;
+}
+
+enum InteractionType {
+  INTERACTION_TYPE_UNSPECIFIED = 0;
+  INTERACTION_TYPE_CLICK = 1;
+  INTERACTION_TYPE_TYPE = 2;
+  INTERACTION_TYPE_WAIT = 3;
+  INTERACTION_TYPE_SCROLL = 4;
+  INTERACTION_TYPE_HOVER = 5;
+}
+
+message Interaction {
+  InteractionType type = 1;
+  string selector = 2;
+  string value = 3; // For TYPE interactions
+  int32 wait_ms = 4; // For WAIT interactions or general timeout
+}
+
+message CaptureElementRequest {
+  string url = 1;
+  string element_selector = 2;
+  ImageFormat image_format = 3;
+  repeated Interaction interactions = 4;
+}
+
+message CaptureElementResponse {
+  int64 timestamp = 1;
+  ImageFormat image_format = 2;
+  bytes image_data = 3;
+}
