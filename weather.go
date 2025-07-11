@@ -56,7 +56,7 @@ func (ws *WeatherService) CaptureWeatherForecast(ctx context.Context, url, eleme
 	return resp.ImageData, nil
 }
 
-func (b *WeatherBot) sendWeatherForecast(channelID, url, elementSelector string) {
+func (b *WeatherBot) sendWeatherForecast(channelID, url, elementSelector, message string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -72,7 +72,7 @@ func (b *WeatherBot) sendWeatherForecast(channelID, url, elementSelector string)
 	}
 
 	_, err = b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Content: "🌤️ Here's your daily weather forecast!",
+		Content: message,
 		Files: []*discordgo.File{
 			{
 				Name:   "weather_forecast.png",

@@ -49,6 +49,7 @@ A Discord bot that sends periodic weather forecast images to subscribed channels
 
 - **`/subscribe-weather`**: Subscribe the current channel to receive weather forecasts
   - `time`: Time to send forecast (format: HH:MM, e.g., "08:00")
+  - `message`: Custom message to send with the weather forecast
   - `url` (optional): Custom URL to capture weather data from
   - `selector` (optional): Custom CSS selector for the element to capture
   
@@ -56,9 +57,9 @@ A Discord bot that sends periodic weather forecast images to subscribed channels
 
 ## Usage Example
 
-1. Run `/subscribe-weather time:08:00` to get weather forecasts every day at 8:00 AM
-2. Run `/subscribe-weather time:20:00` to also get weather forecasts at 8:00 PM  
-3. Run `/subscribe-weather time:12:00 url:https://example.com/weather selector:.weather-map` for custom weather source
+1. Run `/subscribe-weather time:08:00 message:🌤️ Good morning! Here's your daily weather forecast!` to get weather forecasts every day at 8:00 AM
+2. Run `/subscribe-weather time:20:00 message:🌙 Evening weather update!` to also get weather forecasts at 8:00 PM  
+3. Run `/subscribe-weather time:12:00 message:☀️ Noon weather check! url:https://example.com/weather selector:.weather-map` for custom weather source
 4. Run `/unsubscribe-weather` to stop all weather updates for the channel
 
 ## Technical Details

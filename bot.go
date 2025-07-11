@@ -24,6 +24,7 @@ type Subscription struct {
 	StopChan        chan struct{}
 	URL             string
 	ElementSelector string
+	Message         string
 }
 
 func NewWeatherBot(token string, grpcAddress string) (*WeatherBot, error) {
@@ -114,6 +115,12 @@ func (b *WeatherBot) RegisterCommands() error {
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "message",
+					Description: "Custom message to send with the weather forecast",
+					Required:    true,
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
 					Name:        "url",
 					Description: "URL to capture weather data from",
 					Required:    false,
@@ -152,6 +159,7 @@ func (b *WeatherBot) handleSubscribeWeather(s *discordgo.Session, i *discordgo.I
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: "Invalid time format. Please use HH:MM format (e.g., 08:00)",
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		}); err != nil {
 			log.Printf("Error responding to interaction: %v", err)
@@ -159,12 +167,14 @@ func (b *WeatherBot) handleSubscribeWeather(s *discordgo.Session, i *discordgo.I
 		return
 	}
 
-	var url, selector string
+	var url, selector, message string
 	url = "https://tenki.jp/#forecast-public-date-entry-2"
 	selector = "#forecast-map-wrap"
 
 	for _, option := range options {
 		switch option.Name {
+		case "message":
+			message = option.StringValue()
 		case "url":
 			if option.StringValue() != "" {
 				url = option.StringValue()
@@ -179,12 +189,13 @@ func (b *WeatherBot) handleSubscribeWeather(s *discordgo.Session, i *discordgo.I
 	channelID := i.ChannelID
 	guildID := i.GuildID
 
-	err = b.AddSubscription(channelID, guildID, parsedTime, url, selector)
+	err = b.AddSubscription(channelID, guildID, parsedTime, url, selector, message)
 	if err != nil {
 		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: "Failed to subscribe channel to weather forecasts",
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		}); err != nil {
 			log.Printf("Error responding to interaction: %v", err)
@@ -196,6 +207,7 @@ func (b *WeatherBot) handleSubscribeWeather(s *discordgo.Session, i *discordgo.I
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: fmt.Sprintf("Successfully subscribed this channel to receive weather forecasts at %s daily from %s", timeStr, url),
+			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	}); err != nil {
 		log.Printf("Error responding to interaction: %v", err)
@@ -211,13 +223,14 @@ func (b *WeatherBot) handleUnsubscribeWeather(s *discordgo.Session, i *discordgo
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: fmt.Sprintf("Removed %d weather forecast subscription(s) from this channel", count),
+			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	}); err != nil {
 		log.Printf("Error responding to interaction: %v", err)
 	}
 }
 
-func (b *WeatherBot) AddSubscription(channelID, guildID string, scheduledTime time.Time, url, elementSelector string) error {
+func (b *WeatherBot) AddSubscription(channelID, guildID string, scheduledTime time.Time, url, elementSelector, message string) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -241,11 +254,12 @@ func (b *WeatherBot) AddSubscription(channelID, guildID string, scheduledTime ti
 		StopChan:        stopChan,
 		URL:             url,
 		ElementSelector: elementSelector,
+		Message:         message,
 	}
 
 	b.subscriptions[channelID] = append(b.subscriptions[channelID], subscription)
 
-	go b.scheduleWeatherUpdate(channelID, nextRun, stopChan, url, elementSelector)
+	go b.scheduleWeatherUpdate(channelID, nextRun, stopChan, url, elementSelector, message)
 
 	return nil
 }
@@ -274,14 +288,14 @@ func (b *WeatherBot) RemoveSubscriptions(channelID string) int {
 	return count
 }
 
-func (b *WeatherBot) scheduleWeatherUpdate(channelID string, nextRun time.Time, stopChan chan struct{}, url, elementSelector string) {
+func (b *WeatherBot) scheduleWeatherUpdate(channelID string, nextRun time.Time, stopChan chan struct{}, url, elementSelector, message string) {
 	timer := time.NewTimer(time.Until(nextRun))
 	defer timer.Stop()
 
 	for {
 		select {
 		case <-timer.C:
-			b.sendWeatherForecast(channelID, url, elementSelector)
+			b.sendWeatherForecast(channelID, url, elementSelector, message)
 			timer.Reset(24 * time.Hour)
 		case <-stopChan:
 			return
