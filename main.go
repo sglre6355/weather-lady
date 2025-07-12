@@ -13,7 +13,7 @@ func main() {
 		log.Fatal("DISCORD_TOKEN environment variable is required")
 	}
 
-	grpcAddress := os.Getenv("GRPC_ADDRESS")
+	grpcAddress := os.Getenv("WEB_CAPTURE_ADDRESS")
 	if grpcAddress == "" {
 		grpcAddress = "localhost:50051"
 	}

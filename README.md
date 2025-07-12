@@ -35,7 +35,7 @@ A Discord bot that sends periodic weather forecast images to subscribed channels
 1. Set environment variables:
    ```bash
    export DISCORD_TOKEN="your_discord_bot_token_here"
-   export GRPC_ADDRESS="localhost:50051"  # Optional, defaults to localhost:50051
+   export WEB_CAPTURE_ADDRESS="localhost:50051"  # Optional, defaults to localhost:50051
    ```
 
 2. Start your gRPC web capture service on the specified address
