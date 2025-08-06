@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -270,16 +272,46 @@ func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.Int
 		}
 	}
 
-	b.sendWeatherForecast(i.ChannelID, url, selector, "Current weather forecast:")
-
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "Weather forecast sent!",
-			Flags:   discordgo.MessageFlagsEphemeral,
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	}); err != nil {
+		log.Printf("Error deferring interaction: %v", err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if b.weatherService == nil {
+		if _, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: "Weather service not available",
+		}); err != nil {
+			log.Printf("Error sending followup: %v", err)
+		}
+		return
+	}
+
+	imageData, err := b.weatherService.CaptureWeatherForecast(ctx, url, selector)
+	if err != nil {
+		if _, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: "Failed to capture weather forecast",
+		}); err != nil {
+			log.Printf("Error sending followup: %v", err)
+		}
+		return
+	}
+
+	if _, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+		Content: "Current weather forecast:",
+		Files: []*discordgo.File{
+			{
+				Name:        "weather_forecast.png",
+				ContentType: "image/png",
+				Reader:      bytes.NewReader(imageData),
+			},
 		},
 	}); err != nil {
-		log.Printf("Error responding to interaction: %v", err)
+		log.Printf("Error sending followup: %v", err)
 	}
 }
 
