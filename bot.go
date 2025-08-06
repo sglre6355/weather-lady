@@ -98,6 +98,8 @@ func (b *WeatherBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 		b.handleSubscribeWeather(s, i)
 	case "unsubscribe-weather":
 		b.handleUnsubscribeWeather(s, i)
+	case "current-weather":
+		b.handleCurrentWeather(s, i)
 	}
 }
 
@@ -136,6 +138,24 @@ func (b *WeatherBot) RegisterCommands() error {
 		{
 			Name:        "unsubscribe-weather",
 			Description: "Unsubscribe this channel from weather forecasts",
+		},
+		{
+			Name:        "current-weather",
+			Description: "Show current weather forecast",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "url",
+					Description: "URL to capture weather data from",
+					Required:    false,
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "selector",
+					Description: "CSS selector for the element to capture",
+					Required:    false,
+				},
+			},
 		},
 	}
 
@@ -223,6 +243,39 @@ func (b *WeatherBot) handleUnsubscribeWeather(s *discordgo.Session, i *discordgo
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: fmt.Sprintf("Removed %d weather forecast subscription(s) from this channel", count),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	}); err != nil {
+		log.Printf("Error responding to interaction: %v", err)
+	}
+}
+
+func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	options := i.ApplicationCommandData().Options
+
+	var url, selector string
+	url = "https://tenki.jp/#forecast-public-date-entry-2"
+	selector = "#forecast-map-wrap"
+
+	for _, option := range options {
+		switch option.Name {
+		case "url":
+			if option.StringValue() != "" {
+				url = option.StringValue()
+			}
+		case "selector":
+			if option.StringValue() != "" {
+				selector = option.StringValue()
+			}
+		}
+	}
+
+	b.sendWeatherForecast(i.ChannelID, url, selector, "Current weather forecast:")
+
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "Weather forecast sent!",
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	}); err != nil {
