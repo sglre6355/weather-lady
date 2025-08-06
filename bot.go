@@ -100,7 +100,7 @@ func (b *WeatherBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 		b.handleSubscribeWeather(s, i)
 	case "unsubscribe":
 		b.handleUnsubscribeWeather(s, i)
-	case "current-weather":
+	case "latest-forecast":
 		b.handleCurrentWeather(s, i)
 	}
 }
@@ -142,8 +142,8 @@ func (b *WeatherBot) RegisterCommands() error {
 			Description: "Unsubscribe this channel from weather forecasts",
 		},
 		{
-			Name:        "current-weather",
-			Description: "Show current weather forecast",
+			Name:        "latest-forecast",
+			Description: "Show latest weather forecast",
 		},
 	}
 
