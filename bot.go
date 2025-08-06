@@ -272,7 +272,7 @@ func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.Int
 	}
 
 	if _, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
-		Content: "Current weather forecast:",
+		Content: "Here's the latest weather forecast! ☀️",
 		Files: []*discordgo.File{
 			{
 				Name:        "weather_forecast.png",
