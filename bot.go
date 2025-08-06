@@ -239,7 +239,7 @@ func (b *WeatherBot) handleUnsubscribeWeather(s *discordgo.Session, i *discordgo
 }
 
 func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	url := "https://tenki.jp/#forecast-public-date-entry-2"
+	url := "https://tenki.jp/"
 	selector := "#forecast-map-wrap"
 
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
