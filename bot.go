@@ -94,9 +94,9 @@ func (b *WeatherBot) onReady(s *discordgo.Session, event *discordgo.Ready) {
 
 func (b *WeatherBot) onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	switch i.ApplicationCommandData().Name {
-	case "subscribe-weather":
+	case "subscribe":
 		b.handleSubscribeWeather(s, i)
-	case "unsubscribe-weather":
+	case "unsubscribe":
 		b.handleUnsubscribeWeather(s, i)
 	case "current-weather":
 		b.handleCurrentWeather(s, i)
@@ -106,7 +106,7 @@ func (b *WeatherBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 func (b *WeatherBot) RegisterCommands() error {
 	commands := []*discordgo.ApplicationCommand{
 		{
-			Name:        "subscribe-weather",
+			Name:        "subscribe",
 			Description: "Subscribe this channel to receive weather forecasts",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
@@ -136,7 +136,7 @@ func (b *WeatherBot) RegisterCommands() error {
 			},
 		},
 		{
-			Name:        "unsubscribe-weather",
+			Name:        "unsubscribe",
 			Description: "Unsubscribe this channel from weather forecasts",
 		},
 		{
