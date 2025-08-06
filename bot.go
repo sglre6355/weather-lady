@@ -144,20 +144,6 @@ func (b *WeatherBot) RegisterCommands() error {
 		{
 			Name:        "current-weather",
 			Description: "Show current weather forecast",
-			Options: []*discordgo.ApplicationCommandOption{
-				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "url",
-					Description: "URL to capture weather data from",
-					Required:    false,
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "selector",
-					Description: "CSS selector for the element to capture",
-					Required:    false,
-				},
-			},
 		},
 	}
 
@@ -253,24 +239,8 @@ func (b *WeatherBot) handleUnsubscribeWeather(s *discordgo.Session, i *discordgo
 }
 
 func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	options := i.ApplicationCommandData().Options
-
-	var url, selector string
-	url = "https://tenki.jp/#forecast-public-date-entry-2"
-	selector = "#forecast-map-wrap"
-
-	for _, option := range options {
-		switch option.Name {
-		case "url":
-			if option.StringValue() != "" {
-				url = option.StringValue()
-			}
-		case "selector":
-			if option.StringValue() != "" {
-				selector = option.StringValue()
-			}
-		}
-	}
+	url := "https://tenki.jp/#forecast-public-date-entry-2"
+	selector := "#forecast-map-wrap"
 
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
