@@ -106,6 +106,18 @@ func (b *WeatherBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 }
 
 func (b *WeatherBot) RegisterCommands() error {
+	existingCommands, err := b.Session.ApplicationCommands(b.Session.State.User.ID, "")
+	if err != nil {
+		log.Printf("Error getting existing commands: %v", err)
+	} else {
+		for _, cmd := range existingCommands {
+			err := b.Session.ApplicationCommandDelete(b.Session.State.User.ID, "", cmd.ID)
+			if err != nil {
+				log.Printf("Error deleting command %s: %v", cmd.Name, err)
+			}
+		}
+	}
+
 	commands := []*discordgo.ApplicationCommand{
 		{
 			Name:        "subscribe",
