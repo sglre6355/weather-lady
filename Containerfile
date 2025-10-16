@@ -6,8 +6,6 @@ RUN curl -sSL https://github.com/bufbuild/buf/releases/latest/download/buf-Linux
 COPY buf.yaml buf.gen.yaml ./
 # Copy proto files
 COPY api/ ./api/
-# Generate proto files
-RUN buf generate
 # Copy Go module files and download dependencies
 COPY go.mod go.sum ./
 RUN go mod download
