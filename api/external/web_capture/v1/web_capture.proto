@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package web_capture.v1;
 
-option go_package = "github.com/sglre6355/weather-lady/gen/proto/web_capture/v1";
-
 service WebCaptureService {
   rpc CaptureElement(CaptureElementRequest) returns (CaptureElementResponse);
 }

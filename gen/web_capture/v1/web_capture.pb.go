@@ -4,7 +4,7 @@
 // 	protoc        (unknown)
 // source: web_capture/v1/web_capture.proto
 
-package v1
+package web_capturev1
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -360,8 +360,8 @@ const file_web_capture_v1_web_capture_proto_rawDesc = "" +
 	"\x17INTERACTION_TYPE_SCROLL\x10\x04\x12\x1a\n" +
 	"\x16INTERACTION_TYPE_HOVER\x10\x052t\n" +
 	"\x11WebCaptureService\x12_\n" +
-	"\x0eCaptureElement\x12%.web_capture.v1.CaptureElementRequest\x1a&.web_capture.v1.CaptureElementResponseB\xb6\x01\n" +
-	"\x12com.web_capture.v1B\x0fWebCaptureProtoP\x01Z:github.com/sglre6355/weather-lady/gen/proto/web_capture/v1\xa2\x02\x03WXX\xaa\x02\rWebCapture.V1\xca\x02\rWebCapture\\V1\xe2\x02\x19WebCapture\\V1\\GPBMetadata\xea\x02\x0eWebCapture::V1b\x06proto3"
+	"\x0eCaptureElement\x12%.web_capture.v1.CaptureElementRequest\x1a&.web_capture.v1.CaptureElementResponseB\xbe\x01\n" +
+	"\x12com.web_capture.v1B\x0fWebCaptureProtoP\x01ZBgithub.com/sglre6355/weather-lady/gen/web_capture/v1;web_capturev1\xa2\x02\x03WXX\xaa\x02\rWebCapture.V1\xca\x02\rWebCapture\\V1\xe2\x02\x19WebCapture\\V1\\GPBMetadata\xea\x02\x0eWebCapture::V1b\x06proto3"
 
 var (
 	file_web_capture_v1_web_capture_proto_rawDescOnce sync.Once

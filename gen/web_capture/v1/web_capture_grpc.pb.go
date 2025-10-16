@@ -4,7 +4,7 @@
 // - protoc             (unknown)
 // source: web_capture/v1/web_capture.proto
 
-package v1
+package web_capturev1
 
 import (
 	context "context"
