@@ -21,7 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
       - name: Check formatting
         run: |
           if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
@@ -37,7 +39,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
       - name: Test
         run: go test -v ./...
   container-build:
@@ -47,7 +51,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
       - name: Set up ko
         uses: ko-build/setup-ko@v0.9
       - name: Build and push
