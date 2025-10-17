@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	web_capture "github.com/sglre6355/weather-lady/gen/web_capture/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-
-	web_capture "github.com/sglre6355/weather-lady/gen/web_capture/v1"
 )
 
 // WeatherService wraps the gRPC client used to capture weather forecasts.
@@ -18,7 +17,10 @@ type WeatherService struct {
 
 // NewWeatherService connects to the remote capture service and returns a usable client wrapper.
 func NewWeatherService(grpcAddress string) (*WeatherService, error) {
-	conn, err := grpc.NewClient(grpcAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(
+		grpcAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
@@ -40,7 +42,10 @@ func (ws *WeatherService) Close() error {
 }
 
 // CaptureWeatherForecast captures the requested element and returns the rendered binary contents.
-func (ws *WeatherService) CaptureWeatherForecast(ctx context.Context, url, elementSelector string) ([]byte, error) {
+func (ws *WeatherService) CaptureWeatherForecast(
+	ctx context.Context,
+	url, elementSelector string,
+) ([]byte, error) {
 	req := &web_capture.CaptureElementRequest{
 		Url:             url,
 		ElementSelector: elementSelector,

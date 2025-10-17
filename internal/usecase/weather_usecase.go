@@ -20,6 +20,9 @@ func NewWeatherUsecase(provider ForecastProvider) *WeatherUsecase {
 }
 
 // CaptureForecast requests a rendered forecast from the provider.
-func (u *WeatherUsecase) CaptureForecast(ctx context.Context, url, elementSelector string) ([]byte, error) {
+func (u *WeatherUsecase) CaptureForecast(
+	ctx context.Context,
+	url, elementSelector string,
+) ([]byte, error) {
 	return u.provider.CaptureWeatherForecast(ctx, url, elementSelector)
 }

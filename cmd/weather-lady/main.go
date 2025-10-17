@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
-
 	"github.com/sglre6355/weather-lady/internal/domain"
 	"github.com/sglre6355/weather-lady/internal/infrastructure"
 	"github.com/sglre6355/weather-lady/internal/presentation"
@@ -50,9 +49,16 @@ func main() {
 	subscriptionManager := usecase.NewSubscriptionManager(
 		weatherUsecase,
 		forecastSender,
-		usecase.WithSubscriptionErrorHandler(func(sub domain.Subscription, stage usecase.SubscriptionErrorStage, err error) {
-			log.Printf("Subscription delivery failed (channel=%s stage=%s): %v", sub.ChannelID, stage, err)
-		}),
+		usecase.WithSubscriptionErrorHandler(
+			func(sub domain.Subscription, stage usecase.SubscriptionErrorStage, err error) {
+				log.Printf(
+					"Subscription delivery failed (channel=%s stage=%s): %v",
+					sub.ChannelID,
+					stage,
+					err,
+				)
+			},
+		),
 	)
 
 	bot, err := presentation.NewWeatherBot(session, subscriptionManager, weatherUsecase)

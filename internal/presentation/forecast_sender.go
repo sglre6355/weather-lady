@@ -19,7 +19,12 @@ func NewDiscordForecastSender(session *discordgo.Session) *DiscordForecastSender
 }
 
 // SendForecast posts the supplied image and message to the target Discord channel.
-func (s *DiscordForecastSender) SendForecast(ctx context.Context, channelID string, imageData []byte, message string) error {
+func (s *DiscordForecastSender) SendForecast(
+	ctx context.Context,
+	channelID string,
+	imageData []byte,
+	message string,
+) error {
 	if s.session == nil {
 		return fmt.Errorf("discord session is not initialised")
 	}

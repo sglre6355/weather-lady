@@ -101,7 +101,11 @@ func WithSubscriptionErrorHandler(handler SubscriptionErrorHandler) Subscription
 }
 
 // NewSubscriptionManager builds a manager that captures forecasts via capture and dispatches via sender.
-func NewSubscriptionManager(capture ForecastCapture, sender ForecastSender, opts ...SubscriptionManagerOption) *SubscriptionManager {
+func NewSubscriptionManager(
+	capture ForecastCapture,
+	sender ForecastSender,
+	opts ...SubscriptionManagerOption,
+) *SubscriptionManager {
 	manager := &SubscriptionManager{
 		subscriptions:   make(map[string][]*subscriptionEntry),
 		capture:         capture,
@@ -202,14 +206,22 @@ func (m *SubscriptionManager) captureAndSend(sub domain.Subscription) error {
 	imageData, err := m.capture.CaptureForecast(ctxCapture, sub.URL, sub.ElementSelector)
 	cancelCapture()
 	if err != nil {
-		m.onError(sub, SubscriptionErrorStageCapture, fmt.Errorf("failed to capture forecast: %w", err))
+		m.onError(
+			sub,
+			SubscriptionErrorStageCapture,
+			fmt.Errorf("failed to capture forecast: %w", err),
+		)
 		return err
 	}
 
 	ctxSend, cancelSend := context.WithTimeout(context.Background(), m.dispatchTimeout)
 	defer cancelSend()
 	if err := m.sender.SendForecast(ctxSend, sub.ChannelID, imageData, sub.Message); err != nil {
-		m.onError(sub, SubscriptionErrorStageDispatch, fmt.Errorf("failed to dispatch forecast: %w", err))
+		m.onError(
+			sub,
+			SubscriptionErrorStageDispatch,
+			fmt.Errorf("failed to dispatch forecast: %w", err),
+		)
 		return err
 	}
 

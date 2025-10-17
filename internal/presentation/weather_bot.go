@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-
 	"github.com/sglre6355/weather-lady/internal/domain"
 	"github.com/sglre6355/weather-lady/internal/usecase"
 )
@@ -27,7 +26,11 @@ type WeatherBot struct {
 }
 
 // NewWeatherBot constructs a bot instance with all supporting services wired up.
-func NewWeatherBot(session *discordgo.Session, subscriptions *usecase.SubscriptionManager, capture usecase.ForecastCapture) (*WeatherBot, error) {
+func NewWeatherBot(
+	session *discordgo.Session,
+	subscriptions *usecase.SubscriptionManager,
+	capture usecase.ForecastCapture,
+) (*WeatherBot, error) {
 	if session == nil {
 		return nil, fmt.Errorf("discord session cannot be nil")
 	}
@@ -218,7 +221,10 @@ func (b *WeatherBot) handleSubscribeWeather(s *discordgo.Session, i *discordgo.I
 	}
 }
 
-func (b *WeatherBot) handleUnsubscribeWeather(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *WeatherBot) handleUnsubscribeWeather(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+) {
 	count := b.subscriptions.Remove(i.ChannelID)
 
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -243,7 +249,11 @@ func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.Int
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	imageData, err := b.weatherCapture.CaptureForecast(ctx, latestForecastURL, defaultForecastSelector)
+	imageData, err := b.weatherCapture.CaptureForecast(
+		ctx,
+		latestForecastURL,
+		defaultForecastSelector,
+	)
 	if err != nil {
 		if _, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: "Failed to capture weather forecast",
@@ -267,7 +277,11 @@ func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.Int
 	}
 }
 
-func (b *WeatherBot) respondWithError(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+func (b *WeatherBot) respondWithError(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	message string,
+) {
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
