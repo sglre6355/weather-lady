@@ -55,5 +55,7 @@ jobs:
           go-version-file: go.mod
       - name: Set up ko
         uses: ko-build/setup-ko@v0.9
+      - name: Set image creation time
+        run: echo "SOURCE_DATE_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
       - name: Build and push
         run: ko build --bare --platform linux/amd64,linux/arm64 -t "${{ github.sha }}" -t "latest" ./cmd/weather-lady
