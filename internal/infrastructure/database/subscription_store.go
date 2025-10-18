@@ -59,19 +59,24 @@ func (s *SubscriptionStore) List(ctx context.Context) ([]domain.Subscription, er
 		return nil, err
 	}
 
-	subscriptions := make([]domain.Subscription, 0, len(records))
-	for _, record := range records {
-		subscriptions = append(subscriptions, domain.Subscription{
-			ChannelID:       record.ChannelID,
-			GuildID:         record.GuildID,
-			Time:            fromTimeOfDay(record.TimeOfDay),
-			URL:             record.URL,
-			ElementSelector: record.ElementSelector,
-			Message:         record.Message,
-		})
+	return toDomainSubscriptions(records), nil
+}
+
+// ListByGuild returns every subscription configured for guildID.
+func (s *SubscriptionStore) ListByGuild(
+	ctx context.Context,
+	guildID string,
+) ([]domain.Subscription, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("subscription store not initialised")
 	}
 
-	return subscriptions, nil
+	var records []subscriptionRecord
+	if err := s.db.WithContext(ctx).Where("guild_id = ?", guildID).Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	return toDomainSubscriptions(records), nil
 }
 
 // DeleteByChannel removes every subscription stored against channelID and returns the number removed.
@@ -87,7 +92,7 @@ func (s *SubscriptionStore) DeleteByChannel(ctx context.Context, channelID strin
 type subscriptionRecord struct {
 	ID              uint      `gorm:"primaryKey"`
 	ChannelID       string    `gorm:"column:channel_id;size:128;not null;index:idx_subscriptions_channel"`
-	GuildID         string    `gorm:"column:guild_id;size:128;not null"`
+	GuildID         string    `gorm:"column:guild_id;size:128;not null;index:idx_subscriptions_guild"`
 	TimeOfDay       time.Time `gorm:"column:time_of_day;type:time;not null"`
 	URL             string    `gorm:"column:url;type:text;not null"`
 	ElementSelector string    `gorm:"column:element_selector;type:text;not null"`
@@ -132,4 +137,20 @@ func fromTimeOfDay(stored time.Time) time.Time {
 		0,
 		loc,
 	)
+}
+
+func toDomainSubscriptions(records []subscriptionRecord) []domain.Subscription {
+	subscriptions := make([]domain.Subscription, 0, len(records))
+	for _, record := range records {
+		subscriptions = append(subscriptions, domain.Subscription{
+			ChannelID:       record.ChannelID,
+			GuildID:         record.GuildID,
+			Time:            fromTimeOfDay(record.TimeOfDay),
+			URL:             record.URL,
+			ElementSelector: record.ElementSelector,
+			Message:         record.Message,
+		})
+	}
+
+	return subscriptions
 }

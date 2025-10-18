@@ -7,6 +7,7 @@ A Discord bot that sends periodic weather forecast images to subscribed channels
 - `/subscribe` command to subscribe a channel for weather forecasts
 - `/unsubscribe` command to remove all subscriptions from a channel
 - `/latest-forecast` command to get current weather forecast on-demand
+- `/list-subscriptions` command to display configured subscriptions in a server
 - Scheduled daily weather updates at specified times
 - Captures weather forecast images from configurable URLs with custom CSS selectors
 - Supports multiple subscriptions per channel (e.g., morning and evening forecasts)
@@ -60,6 +61,8 @@ A Discord bot that sends periodic weather forecast images to subscribed channels
 - **`/unsubscribe`**: Remove all weather forecast subscriptions from the current channel
 
 - **`/latest-forecast`**: Get the current weather forecast immediately (no parameters required)
+
+- **`/list-subscriptions`**: Show every subscription configured in the current server
 
 ## Usage Example
 

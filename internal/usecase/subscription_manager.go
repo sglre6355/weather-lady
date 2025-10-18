@@ -23,6 +23,7 @@ type ForecastSender interface {
 type SubscriptionStore interface {
 	Create(ctx context.Context, subscription domain.Subscription) error
 	List(ctx context.Context) ([]domain.Subscription, error)
+	ListByGuild(ctx context.Context, guildID string) ([]domain.Subscription, error)
 	DeleteByChannel(ctx context.Context, channelID string) (int, error)
 }
 
@@ -221,6 +222,30 @@ func (m *SubscriptionManager) LoadExisting(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// ListByGuild returns every subscription configured for the supplied guild.
+func (m *SubscriptionManager) ListByGuild(
+	ctx context.Context,
+	guildID string,
+) ([]domain.Subscription, error) {
+	if m.store != nil {
+		return m.store.ListByGuild(ctx, guildID)
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var subs []domain.Subscription
+	for _, entries := range m.subscriptions {
+		for _, entry := range entries {
+			if entry.subscription.GuildID == guildID {
+				subs = append(subs, entry.subscription)
+			}
+		}
+	}
+
+	return subs, nil
 }
 
 func (m *SubscriptionManager) schedule(entry *subscriptionEntry) {

@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -94,6 +96,8 @@ func (b *WeatherBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 		b.handleUnsubscribeWeather(s, i)
 	case "latest-forecast":
 		b.handleCurrentWeather(s, i)
+	case "list-subscriptions":
+		b.handleListSubscriptions(s, i)
 	}
 }
 
@@ -148,6 +152,10 @@ func (b *WeatherBot) RegisterCommands() error {
 		{
 			Name:        "latest-forecast",
 			Description: "Show latest weather forecast",
+		},
+		{
+			Name:        "list-subscriptions",
+			Description: "List all weather subscriptions configured in this server",
 		},
 	}
 
@@ -279,6 +287,64 @@ func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.Int
 		},
 	}); err != nil {
 		log.Printf("Error sending followup: %v", err)
+	}
+}
+
+func (b *WeatherBot) handleListSubscriptions(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+) {
+	if i.GuildID == "" {
+		b.respondWithError(s, i, "Subscriptions can only be listed inside a server")
+		return
+	}
+
+	subs, err := b.subscriptions.ListByGuild(context.Background(), i.GuildID)
+	if err != nil {
+		log.Printf("Failed to list subscriptions for guild %s: %v", i.GuildID, err)
+		b.respondWithError(s, i, "Failed to fetch subscriptions for this server")
+		return
+	}
+
+	if len(subs) == 0 {
+		if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "No weather subscriptions configured in this server.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		}); err != nil {
+			log.Printf("Error responding to interaction: %v", err)
+		}
+		return
+	}
+
+	sort.Slice(subs, func(a, b int) bool {
+		if subs[a].ChannelID == subs[b].ChannelID {
+			return subs[a].Time.Before(subs[b].Time)
+		}
+		return subs[a].ChannelID < subs[b].ChannelID
+	})
+
+	var builder strings.Builder
+	builder.WriteString("Configured weather subscriptions:\n")
+	for _, sub := range subs {
+		builder.WriteString(fmt.Sprintf(
+			"- <#%s> at %s — %s\n",
+			sub.ChannelID,
+			sub.Time.Format("15:04"),
+			sub.URL,
+		))
+	}
+
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: builder.String(),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	}); err != nil {
+		log.Printf("Error responding to interaction: %v", err)
 	}
 }
 
