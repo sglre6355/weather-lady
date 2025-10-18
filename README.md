@@ -18,6 +18,7 @@ A Discord bot that sends periodic weather forecast images to subscribed channels
 
 - Go 1.24.4 or later
 - [Buf CLI](https://docs.buf.build/installation) for protobuf generation
+- A SQL database (MySQL or PostgreSQL) accessible to the bot
 
 ### Build
 
@@ -36,8 +37,10 @@ A Discord bot that sends periodic weather forecast images to subscribed channels
 1. Set environment variables:
    ```bash
    export DISCORD_TOKEN="your_discord_bot_token_here"
+   export DATABASE_URL="mysql://user:pass@localhost:3306/weather-lady"
    export WEB_CAPTURE_ADDRESS="localhost:50051"  # Optional, defaults to localhost:50051
    ```
+   `DATABASE_URL` supports both `mysql://` and `postgres://` style connection strings.
 
 2. Start your gRPC web capture service on the specified address
 
@@ -72,6 +75,6 @@ A Discord bot that sends periodic weather forecast images to subscribed channels
 - Default captures weather forecast images from https://tenki.jp/ 
 - Default targets the `#forecast-map-wrap` element for image capture
 - Supports custom URLs and CSS selectors for flexible weather data sources
-- Stores subscriptions in memory (not persistent across restarts)
+- Persists subscriptions in the database
 - Uses gRPC to communicate with web capture service
 - Built with buf for protobuf code generation

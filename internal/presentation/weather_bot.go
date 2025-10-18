@@ -225,7 +225,12 @@ func (b *WeatherBot) handleUnsubscribeWeather(
 	s *discordgo.Session,
 	i *discordgo.InteractionCreate,
 ) {
-	count := b.subscriptions.Remove(i.ChannelID)
+	count, err := b.subscriptions.Remove(i.ChannelID)
+	if err != nil {
+		log.Printf("Failed to remove subscriptions for channel %s: %v", i.ChannelID, err)
+		b.respondWithError(s, i, "Failed to unsubscribe channel from weather forecasts")
+		return
+	}
 
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,

@@ -19,6 +19,13 @@ type ForecastSender interface {
 	SendForecast(ctx context.Context, channelID string, imageData []byte, message string) error
 }
 
+// SubscriptionStore persists subscriptions and retrieves them for restoration.
+type SubscriptionStore interface {
+	Create(ctx context.Context, subscription domain.Subscription) error
+	List(ctx context.Context) ([]domain.Subscription, error)
+	DeleteByChannel(ctx context.Context, channelID string) (int, error)
+}
+
 // SubscriptionErrorStage indicates which step of the delivery pipeline failed.
 type SubscriptionErrorStage string
 
@@ -44,6 +51,7 @@ type SubscriptionManager struct {
 
 	capture ForecastCapture
 	sender  ForecastSender
+	store   SubscriptionStore
 
 	nowFn           func() time.Time
 	interval        time.Duration
@@ -100,6 +108,13 @@ func WithSubscriptionErrorHandler(handler SubscriptionErrorHandler) Subscription
 	}
 }
 
+// WithSubscriptionStore configures persistent storage for subscriptions.
+func WithSubscriptionStore(store SubscriptionStore) SubscriptionManagerOption {
+	return func(m *SubscriptionManager) {
+		m.store = store
+	}
+}
+
 // NewSubscriptionManager builds a manager that captures forecasts via capture and dispatches via sender.
 func NewSubscriptionManager(
 	capture ForecastCapture,
@@ -133,35 +148,43 @@ func (m *SubscriptionManager) Add(sub domain.Subscription) error {
 		return fmt.Errorf("subscription manager missing forecast sender dependency")
 	}
 
-	entry := &subscriptionEntry{
-		subscription: sub,
-		stopChan:     make(chan struct{}),
+	if m.store != nil {
+		if err := m.store.Create(context.Background(), sub); err != nil {
+			return fmt.Errorf("persist subscription: %w", err)
+		}
 	}
 
-	m.mu.Lock()
-	m.subscriptions[sub.ChannelID] = append(m.subscriptions[sub.ChannelID], entry)
-	m.mu.Unlock()
-
-	go m.schedule(entry)
+	m.register(sub)
 	return nil
 }
 
 // Remove cancels all subscriptions for a channel and returns how many were removed.
-func (m *SubscriptionManager) Remove(channelID string) int {
+func (m *SubscriptionManager) Remove(channelID string) (int, error) {
+	var deletedFromStore int
+	if m.store != nil {
+		count, err := m.store.DeleteByChannel(context.Background(), channelID)
+		if err != nil {
+			return 0, fmt.Errorf("delete subscriptions: %w", err)
+		}
+		deletedFromStore = count
+	}
+
 	m.mu.Lock()
 	entries, ok := m.subscriptions[channelID]
-	if !ok {
-		m.mu.Unlock()
-		return 0
+	if ok {
+		delete(m.subscriptions, channelID)
 	}
-	delete(m.subscriptions, channelID)
 	m.mu.Unlock()
 
 	for _, entry := range entries {
 		close(entry.stopChan)
 	}
 
-	return len(entries)
+	if len(entries) > 0 {
+		return len(entries), nil
+	}
+
+	return deletedFromStore, nil
 }
 
 // Shutdown cancels every active subscription. Returns total number cancelled.
@@ -182,6 +205,24 @@ func (m *SubscriptionManager) Shutdown() int {
 	return total
 }
 
+// LoadExisting schedules every subscription currently stored in persistent storage.
+func (m *SubscriptionManager) LoadExisting(ctx context.Context) error {
+	if m.store == nil {
+		return nil
+	}
+
+	subs, err := m.store.List(ctx)
+	if err != nil {
+		return fmt.Errorf("load subscriptions: %w", err)
+	}
+
+	for _, sub := range subs {
+		m.register(sub)
+	}
+
+	return nil
+}
+
 func (m *SubscriptionManager) schedule(entry *subscriptionEntry) {
 	nextRun := m.nextRun(entry.subscription.Time)
 	timer := time.NewTimer(time.Until(nextRun))
@@ -199,6 +240,19 @@ func (m *SubscriptionManager) schedule(entry *subscriptionEntry) {
 			return
 		}
 	}
+}
+
+func (m *SubscriptionManager) register(sub domain.Subscription) {
+	entry := &subscriptionEntry{
+		subscription: sub,
+		stopChan:     make(chan struct{}),
+	}
+
+	m.mu.Lock()
+	m.subscriptions[sub.ChannelID] = append(m.subscriptions[sub.ChannelID], entry)
+	m.mu.Unlock()
+
+	go m.schedule(entry)
 }
 
 func (m *SubscriptionManager) captureAndSend(sub domain.Subscription) error {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -9,6 +10,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/sglre6355/weather-lady/internal/domain"
 	"github.com/sglre6355/weather-lady/internal/infrastructure"
+	"github.com/sglre6355/weather-lady/internal/infrastructure/database"
 	"github.com/sglre6355/weather-lady/internal/presentation"
 	"github.com/sglre6355/weather-lady/internal/usecase"
 )
@@ -17,6 +19,31 @@ func main() {
 	discordToken := os.Getenv("DISCORD_TOKEN")
 	if discordToken == "" {
 		log.Fatal("DISCORD_TOKEN environment variable is required")
+	}
+
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
+
+	db, err := database.Open(databaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to access database handle: %v", err)
+	}
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			log.Printf("Error closing database connection: %v", err)
+		}
+	}()
+
+	subscriptionStore := database.NewSubscriptionStore(db)
+	if err := subscriptionStore.AutoMigrate(context.Background()); err != nil {
+		log.Fatalf("Failed to run database migrations: %v", err)
 	}
 
 	grpcAddress := os.Getenv("WEB_CAPTURE_ADDRESS")
@@ -49,6 +76,7 @@ func main() {
 	subscriptionManager := usecase.NewSubscriptionManager(
 		weatherUsecase,
 		forecastSender,
+		usecase.WithSubscriptionStore(subscriptionStore),
 		usecase.WithSubscriptionErrorHandler(
 			func(sub domain.Subscription, stage usecase.SubscriptionErrorStage, err error) {
 				log.Printf(
@@ -60,6 +88,16 @@ func main() {
 			},
 		),
 	)
+
+	if err := subscriptionManager.LoadExisting(context.Background()); err != nil {
+		if err := session.Close(); err != nil {
+			log.Printf("Error closing Discord session after subscription restore failure: %v", err)
+		}
+		if err := weatherService.Close(); err != nil {
+			log.Printf("Error closing weather service after subscription restore failure: %v", err)
+		}
+		log.Fatalf("Failed to restore saved subscriptions: %v", err)
+	}
 
 	bot, err := presentation.NewWeatherBot(session, subscriptionManager, weatherUsecase)
 	if err != nil {
