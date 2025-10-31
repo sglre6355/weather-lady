@@ -18,7 +18,7 @@ import (
 
 type config struct {
 	DiscordToken      string `env:"DISCORD_TOKEN,required"`
-	DatabaseURL       string `env:"DATABASE_URL,required"`
+	DatabaseDSN       string `env:"DATABASE_DSN,required"`
 	WebCaptureAddress string `env:"WEB_CAPTURE_ADDRESS"    envDefault:"localhost:50051"`
 }
 
@@ -29,7 +29,7 @@ func run() int {
 		return 1
 	}
 
-	db, err := database.Open(cfg.DatabaseURL)
+	db, err := database.Open(cfg.DatabaseDSN)
 	if err != nil {
 		slog.Error("failed to connect to database", slog.Any("error", err))
 		return 1
