@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -63,7 +63,7 @@ func (b *WeatherBot) Start() error {
 		return fmt.Errorf("failed to open Discord session: %w", err)
 	}
 
-	log.Println("Weather bot is running!")
+	slog.Info("Bot successfully started")
 	return nil
 }
 
@@ -75,13 +75,19 @@ func (b *WeatherBot) Stop() {
 
 	if b.session != nil {
 		if err := b.session.Close(); err != nil {
-			log.Printf("Error closing Discord session: %v", err)
+			slog.Error("failed to close Discord session", "error", err)
 		}
 	}
 }
 
 func (b *WeatherBot) onReady(s *discordgo.Session, event *discordgo.Ready) {
-	log.Printf("Logged in as: %v#%v", s.State.User.Username, s.State.User.Discriminator)
+	slog.Info(
+		"Logged in",
+		"username",
+		s.State.User.Username,
+		"discriminator",
+		s.State.User.Discriminator,
+	)
 }
 
 func (b *WeatherBot) onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -105,11 +111,11 @@ func (b *WeatherBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 func (b *WeatherBot) RegisterCommands() error {
 	existingCommands, err := b.session.ApplicationCommands(b.session.State.User.ID, "")
 	if err != nil {
-		log.Printf("Error getting existing commands: %v", err)
+		slog.Error("failed to get existing commands", "error", err)
 	} else {
 		for _, cmd := range existingCommands {
 			if err := b.session.ApplicationCommandDelete(b.session.State.User.ID, "", cmd.ID); err != nil {
-				log.Printf("Error deleting command %s: %v", cmd.Name, err)
+				slog.Error("failed to delete command", "command", cmd.Name, "error", err)
 			}
 		}
 	}
@@ -213,7 +219,7 @@ func (b *WeatherBot) handleSubscribeWeather(s *discordgo.Session, i *discordgo.I
 	}
 
 	if err := b.subscriptions.Add(sub); err != nil {
-		log.Printf("Failed to add subscription for channel %s: %v", i.ChannelID, err)
+		slog.Error("failed to add subscription for channel", "channelID", i.ChannelID, "error", err)
 		b.respondWithError(s, i, "Failed to subscribe channel to weather forecasts")
 		return
 	}
@@ -225,7 +231,7 @@ func (b *WeatherBot) handleSubscribeWeather(s *discordgo.Session, i *discordgo.I
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	}); err != nil {
-		log.Printf("Error responding to interaction: %v", err)
+		slog.Error("failed to respond to interaction", "error", err)
 	}
 }
 
@@ -235,7 +241,13 @@ func (b *WeatherBot) handleUnsubscribeWeather(
 ) {
 	count, err := b.subscriptions.Remove(i.ChannelID)
 	if err != nil {
-		log.Printf("Failed to remove subscriptions for channel %s: %v", i.ChannelID, err)
+		slog.Error(
+			"failed to remove subscriptions for channel",
+			"channelID",
+			i.ChannelID,
+			"error",
+			err,
+		)
 		b.respondWithError(s, i, "Failed to unsubscribe channel from weather forecasts")
 		return
 	}
@@ -247,7 +259,7 @@ func (b *WeatherBot) handleUnsubscribeWeather(
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	}); err != nil {
-		log.Printf("Error responding to interaction: %v", err)
+		slog.Error("failed to respond to interaction", "error", err)
 	}
 }
 
@@ -255,7 +267,7 @@ func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.Int
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	}); err != nil {
-		log.Printf("Error deferring interaction: %v", err)
+		slog.Error("failed to defer interaction", "error", err)
 		return
 	}
 
@@ -271,7 +283,7 @@ func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.Int
 		if _, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: "Failed to capture weather forecast",
 		}); err != nil {
-			log.Printf("Error sending followup: %v", err)
+			slog.Error("failed to send followup", "error", err)
 		}
 		return
 	}
@@ -286,7 +298,7 @@ func (b *WeatherBot) handleCurrentWeather(s *discordgo.Session, i *discordgo.Int
 			},
 		},
 	}); err != nil {
-		log.Printf("Error sending followup: %v", err)
+		slog.Error("failed to send followup", "error", err)
 	}
 }
 
@@ -301,7 +313,7 @@ func (b *WeatherBot) handleListSubscriptions(
 
 	subs, err := b.subscriptions.ListByGuild(context.Background(), i.GuildID)
 	if err != nil {
-		log.Printf("Failed to list subscriptions for guild %s: %v", i.GuildID, err)
+		slog.Error("failed to list subscriptions for guild", "guildID", i.GuildID, "error", err)
 		b.respondWithError(s, i, "Failed to fetch subscriptions for this server")
 		return
 	}
@@ -314,7 +326,7 @@ func (b *WeatherBot) handleListSubscriptions(
 				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		}); err != nil {
-			log.Printf("Error responding to interaction: %v", err)
+			slog.Error("failed to respond to interaction", "error", err)
 		}
 		return
 	}
@@ -344,7 +356,7 @@ func (b *WeatherBot) handleListSubscriptions(
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	}); err != nil {
-		log.Printf("Error responding to interaction: %v", err)
+		slog.Error("failed to respond to interaction", "error", err)
 	}
 }
 
@@ -360,6 +372,6 @@ func (b *WeatherBot) respondWithError(
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	}); err != nil {
-		log.Printf("Error responding to interaction: %v", err)
+		slog.Error("failed to respond to interaction", "error", err)
 	}
 }

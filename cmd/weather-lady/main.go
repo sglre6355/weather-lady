@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,39 +22,44 @@ type config struct {
 	WebCaptureAddress string `env:"WEB_CAPTURE_ADDRESS"    envDefault:"localhost:50051"`
 }
 
-func main() {
+func run() int {
 	cfg, err := env.ParseAs[config]()
 	if err != nil {
-		log.Fatalf("failed to parse environment variables: %v", err)
+		slog.Error("failed to parse environment variables", slog.Any("error", err))
+		return 1
 	}
 
 	db, err := database.Open(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		slog.Error("failed to connect to database", slog.Any("error", err))
+		return 1
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatalf("Failed to access database handle: %v", err)
+		slog.Error("failed to access database handle", slog.Any("error", err))
+		return 1
 	}
 	defer func() {
 		if err := sqlDB.Close(); err != nil {
-			log.Printf("Error closing database connection: %v", err)
+			slog.Error("failed to close database connection", slog.Any("error", err))
 		}
 	}()
 
 	subscriptionStore := database.NewSubscriptionStore(db)
 	if err := subscriptionStore.AutoMigrate(context.Background()); err != nil {
-		log.Fatalf("Failed to run database migrations: %v", err)
+		slog.Error("failed to run database migrations", slog.Any("error", err))
+		return 1
 	}
 
 	weatherService, err := infrastructure.NewWeatherService(cfg.WebCaptureAddress)
 	if err != nil {
-		log.Fatalf("Failed to create weather service: %v", err)
+		slog.Error("failed to create weather service", slog.Any("error", err))
+		return 1
 	}
 	defer func() {
 		if err := weatherService.Close(); err != nil {
-			log.Printf("Error closing weather service: %v", err)
+			slog.Error("failed to close weather service connection", slog.Any("error", err))
 		}
 	}()
 
@@ -62,11 +67,18 @@ func main() {
 
 	session, err := discordgo.New("Bot " + cfg.DiscordToken)
 	if err != nil {
-		if err := weatherService.Close(); err != nil {
-			log.Printf("Error closing weather service after Discord failure: %v", err)
-		}
-		log.Fatalf("Failed to create Discord session: %v", err)
+		slog.Error("failed to create Discord session", slog.Any("error", err))
+		return 1
 	}
+	defer func() {
+		if err := session.Close(); err != nil {
+			slog.Error(
+				"failed to close Discord session",
+				"error",
+				err,
+			)
+		}
+	}()
 
 	forecastSender := presentation.NewDiscordForecastSender(session)
 
@@ -76,60 +88,50 @@ func main() {
 		usecase.WithSubscriptionStore(subscriptionStore),
 		usecase.WithSubscriptionErrorHandler(
 			func(sub domain.Subscription, stage usecase.SubscriptionErrorStage, err error) {
-				log.Printf(
-					"Subscription delivery failed (channel=%s stage=%s): %v",
-					sub.ChannelID,
-					stage,
-					err,
+				slog.Error(
+					"subscription delivery failed",
+					slog.String("channel", sub.ChannelID),
+					slog.Any("stage", stage),
+					slog.Any("error", err),
 				)
 			},
 		),
 	)
 
 	if err := subscriptionManager.LoadExisting(context.Background()); err != nil {
-		if err := session.Close(); err != nil {
-			log.Printf("Error closing Discord session after subscription restore failure: %v", err)
-		}
-		if err := weatherService.Close(); err != nil {
-			log.Printf("Error closing weather service after subscription restore failure: %v", err)
-		}
-		log.Fatalf("Failed to restore saved subscriptions: %v", err)
+		slog.Error("failed to restore saved subscriptions", "error", err)
+		return 1
 	}
 
 	bot, err := presentation.NewWeatherBot(session, subscriptionManager, weatherUsecase)
 	if err != nil {
-		if err := session.Close(); err != nil {
-			log.Printf("Error closing Discord session after bot initialisation failure: %v", err)
-		}
-		if err := weatherService.Close(); err != nil {
-			log.Printf("Error closing weather service after bot initialisation failure: %v", err)
-		}
-		log.Fatalf("Failed to create bot: %v", err)
+		slog.Error("failed to create bot", "error", err)
+		return 1
 	}
 
 	if err := bot.Start(); err != nil {
 		bot.Stop()
-		if err := weatherService.Close(); err != nil {
-			log.Printf("Error closing weather service after bot start failure: %v", err)
-		}
-		log.Fatalf("Failed to start bot: %v", err)
+		slog.Error("failed to start bot", "error", err)
+		return 1
 	}
 
 	if err := bot.RegisterCommands(); err != nil {
 		bot.Stop()
-		if err := weatherService.Close(); err != nil {
-			log.Printf("Error closing weather service after command registration failure: %v", err)
-		}
-		log.Fatalf("Failed to register commands: %v", err)
+		slog.Error("failed to register commands", "error", err)
+		return 1
 	}
-
-	log.Println("Weather Lady bot is now running. Press CTRL-C to exit.")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
 
-	log.Println("Shutting down...")
+	slog.Info("Termination signal received, shutting down...")
 	bot.Stop()
-	log.Println("Bot stopped successfully.")
+	slog.Info("Bot successfully terminated")
+
+	return 0
+}
+
+func main() {
+	os.Exit(run())
 }
