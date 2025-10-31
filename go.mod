@@ -4,6 +4,7 @@ go 1.24.4
 
 require (
 	github.com/bwmarrin/discordgo v0.29.0
+	github.com/caarlos0/env/v11 v11.3.1
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 	gorm.io/driver/mysql v1.6.0

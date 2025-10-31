@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/caarlos0/env/v11"
 	"github.com/sglre6355/weather-lady/internal/domain"
 	"github.com/sglre6355/weather-lady/internal/infrastructure"
 	"github.com/sglre6355/weather-lady/internal/infrastructure/database"
@@ -15,18 +16,19 @@ import (
 	"github.com/sglre6355/weather-lady/internal/usecase"
 )
 
+type config struct {
+	DiscordToken      string `env:"DISCORD_TOKEN,required"`
+	DatabaseURL       string `env:"DATABASE_URL,required"`
+	WebCaptureAddress string `env:"WEB_CAPTURE_ADDRESS"    envDefault:"localhost:50051"`
+}
+
 func main() {
-	discordToken := os.Getenv("DISCORD_TOKEN")
-	if discordToken == "" {
-		log.Fatal("DISCORD_TOKEN environment variable is required")
+	cfg, err := env.ParseAs[config]()
+	if err != nil {
+		log.Fatalf("failed to parse environment variables: %v", err)
 	}
 
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		log.Fatal("DATABASE_URL environment variable is required")
-	}
-
-	db, err := database.Open(databaseURL)
+	db, err := database.Open(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -46,12 +48,7 @@ func main() {
 		log.Fatalf("Failed to run database migrations: %v", err)
 	}
 
-	grpcAddress := os.Getenv("WEB_CAPTURE_ADDRESS")
-	if grpcAddress == "" {
-		grpcAddress = "localhost:50051"
-	}
-
-	weatherService, err := infrastructure.NewWeatherService(grpcAddress)
+	weatherService, err := infrastructure.NewWeatherService(cfg.WebCaptureAddress)
 	if err != nil {
 		log.Fatalf("Failed to create weather service: %v", err)
 	}
@@ -63,7 +60,7 @@ func main() {
 
 	weatherUsecase := usecase.NewWeatherUsecase(weatherService)
 
-	session, err := discordgo.New("Bot " + discordToken)
+	session, err := discordgo.New("Bot " + cfg.DiscordToken)
 	if err != nil {
 		if err := weatherService.Close(); err != nil {
 			log.Printf("Error closing weather service after Discord failure: %v", err)
